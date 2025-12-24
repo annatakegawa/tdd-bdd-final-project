@@ -27,7 +27,7 @@ import os
 import logging
 import unittest
 from decimal import Decimal
-from service.models import Product, Category, db
+from service.models import Product, Category, db, DataValidationError
 from service import app
 from tests.factories import ProductFactory
 
@@ -144,6 +144,18 @@ class TestProductModel(unittest.TestCase):
         self.assertEqual(products[0].id, original_id)
         self.assertEqual(products[0].description, "new description")
 
+    def test_update_a_product_empty_id(self):
+        """It should fail to update a product"""
+        # Create product
+        product = ProductFactory()
+        product.create()
+        # Update product
+        product.id = None
+        product.description = "invalid"
+        # Call update and assert result
+        with self.assertRaises(DataValidationError):
+            product.update()
+
     def test_delete_a_product(self):
         """It should delete a product"""
         # Create product
@@ -199,6 +211,24 @@ class TestProductModel(unittest.TestCase):
         count = len([product for product in products if product.price == price])
         # Retrieve products from database with specified price
         found = Product.find_by_price(price)
+        # Assert that count matches
+        self.assertEqual(found.count(), count)
+        # Assert that each product's name matches the expected name
+        for product in found:
+            self.assertEqual(product.price, price)
+
+    def test_find_by_price_str_input(self):
+        """It should find a product by price"""
+        # Create batch of 5 objects
+        products = ProductFactory.create_batch(5)
+        for product in products:
+            product.create()
+        # Get name of first product in list
+        price = products[0].price
+        # Count number of occurrences of the name in list
+        count = len([product for product in products if product.price == price])
+        # Retrieve products from database with specified price
+        found = Product.find_by_price(str(price))
         # Assert that count matches
         self.assertEqual(found.count(), count)
         # Assert that each product's name matches the expected name
